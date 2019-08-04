@@ -1,0 +1,35 @@
+General:
+- Use self-documenting scripts
+- Optionally use jedi, yapf, pylint, etc.
+- Use pytest instead of py.test
+- Target python3
+
+Commands:
+- Run Script
+  + Clean out implicit "run unittest" code
+  - Handle TM_PYTHON
+  - HMTL-ify error output (backlinks)
+- Check Python Syntax
+- Cleanup Whitespace
+- Debug Script in Terminal
+- Execute Line/Selection as Python
++ Run Project Unittests
+  + Change to use pytest
+- Run Script in Python
+
+Help:
+- Help (for bundle)
+  - Use help_gen
+- Documentation for Current Word
+- Documentation for Module
+- Documentation in Browser
+
+Snippets:  
+- super
+- New Function
+
+Misc:
+- Show Symbol
+  - What does it do?
+- Copy Symbol
+  - What does it do?

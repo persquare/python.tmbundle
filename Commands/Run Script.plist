@@ -7,47 +7,34 @@
 	<key>beforeRunningCommand</key>
 	<string>saveModifiedFiles</string>
 	<key>command</key>
-	<string>#!/usr/bin/env ruby18
+	<string>#!/usr/bin/env sh
+
+# Run a script and present the output in the helper view.
+# If TM_PYTHON_VENV exists it will be taken as the base path to a virtual environment that will be activated before running the script. 
+
+# Activate the virtualenv if requested by environment or .tm_properties
+ACTIVATE="${TM_PYTHON_VENV}/bin/activate"
+[[ -f "${ACTIVATE}" ]] &amp;&amp; . "${ACTIVATE}"
+
+/usr/bin/env ruby18 &lt;&lt;-EORUBY
+
 require ENV["TM_SUPPORT_PATH"] + "/lib/tm/executor"
 require ENV["TM_SUPPORT_PATH"] + "/lib/tm/save_current_document"
 
 TextMate.save_if_untitled('py')
 TextMate::Executor.make_project_master_current_document
 
-ENV["PYTHONPATH"] = ENV["TM_BUNDLE_SUPPORT"] + (ENV.has_key?("PYTHONPATH") ? ":" + ENV["PYTHONPATH"] : "")
+# ENV["PYTHONPATH"] = ENV["TM_BUNDLE_SUPPORT"] + (ENV.has_key?("PYTHONPATH") ? ":" + ENV["PYTHONPATH"] : "")
 
-is_test_script = ENV["TM_FILEPATH"] =~ /(?:\b|_)(?:test)(?:\b|_)/ or
-                 File.read(ENV["TM_FILEPATH"]) =~ /\bimport\b.+(?:unittest)/
 
-TextMate::Executor.run(ENV["TM_PYTHON"] || "python", "-u", ENV["TM_FILEPATH"], :create_error_pipe =&gt; true, :use_hashbang =&gt; !ENV.has_key?('TM_PYTHON')) do |str, type|
-  if is_test_script and type == :err
-    if str =~ /\A[\.F]*\Z/
-      str.gsub!(/(\.|F)/, "&lt;span class=\"test ok\"&gt;\\1&lt;/span&gt;")
-      str + "&lt;br/&gt;\n"
-    elsif str =~ /\A(FAILED.*)\Z/
-      "&lt;div class=\"test fail\"&gt;#{htmlize $1}&lt;/div&gt;\n"
-    elsif str =~ /\A(OK.*)\Z/
-      "&lt;div class=\"test ok\"&gt;#{htmlize $1}&lt;/div&gt;\n"
-    elsif str =~ /^(\s+)File "(.+)", line (\d+), in (.*)/
-      indent = $1
-      file   = $2
-      line   = $3
-      method = $4
-      indent += " " if file.sub!(/^\"(.*)\"/,"\1")
-      url = "&amp;amp;url=file://" + e_url(file)
-      display_name = ENV["TM_DISPLAYNAME"]
-      "#{htmlize(indent)}&lt;a class=\"near\" href=\"txmt://open?line=#{line + url}\"&gt;" +
-        (method ? "method #{CGI::escapeHTML method}" : "&lt;em&gt;at top level&lt;/em&gt;") +
-        "&lt;/a&gt; in &lt;strong&gt;#{CGI::escapeHTML display_name}&lt;/strong&gt; at line #{line}&lt;br/&gt;\n"
-    end
-  end
-end</string>
+TextMate::Executor.run(ENV["TM_PYTHON"] || "python", "-u", ENV["TM_FILEPATH"], :create_error_pipe =&gt; true, :use_hashbang =&gt; !ENV.has_key?('TM_PYTHON'))
+EORUBY</string>
 	<key>input</key>
 	<string>document</string>
 	<key>inputFormat</key>
 	<string>text</string>
 	<key>keyEquivalent</key>
-	<string>@r</string>
+	<string>~@r</string>
 	<key>name</key>
 	<string>Run Script</string>
 	<key>outputCaret</key>

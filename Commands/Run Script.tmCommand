@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>beforeRunningCommand</key>
+	<string>saveActiveFile</string>
+	<key>command</key>
+	<string>#!/usr/bin/env python3
+import os
+import sys
+
+envvars = ['TM_BUNDLE_SUPPORT', 'TM_SUPPORT_PATH']
+sys.path[:0] = [os.environ[v]+'/lib' for v in envvars if os.environ[v] not in sys.path]
+
+
+import tm
+
+class PyExecutor(tm.Executor):
+    
+    def format_stdout(self, line):
+        return f'&lt;div class="line"&gt;- {line.rstrip()} -&lt;/div&gt;'
+        
+    def format_stderr(self, line):
+        return f'&lt;span class="err"&gt;{self.format_stdout(line)}&lt;/span&gt;'
+
+
+
+
+
+e = PyExecutor()
+
+
+script_style_header = '''
+&lt;!-- executor javascripts --&gt;
+  &lt;script type="text/javascript" charset="utf-8"&gt;
+  function press(evt) {
+     if (evt.keyCode == 67 &amp;&amp; evt.ctrlKey == true) {
+       // TextMate.system("kill -s USR1 #{::Process.pid};", null);
+       console.log("kill -s USR1 &lt;&lt;PID&gt;&gt;;")
+       evt.preventDefault();
+     }
+  }
+
+  function click(evt) {
+    if (event.target.tagName == 'A') {
+      var line = event.target;
+      while (line &amp;&amp; !line.classList.contains('line')) line = line.parentElement;
+      if (line) {
+        Array.from(document.getElementsByClassName('line current')).forEach(function (el) {
+          el.classList.remove('current');
+        });
+        line.classList.add('current');
+      }
+    }
+  }
+  function copyOutput(element) {
+    output = element.innerText.replace(/(?:^| ) +/mg, function(match, offset, s) { return match.replace(/ /g, ' '); });
+    cmd = TextMate.system('/usr/bin/pbcopy', function(){});
+    cmd.write(output);
+    cmd.close();
+    document.getElementById('copytime').innerText = 'output copied to clipboard';
+  }
+
+  &lt;/script&gt;
+  &lt;!-- end javascript --&gt;
+  &lt;style type="text/css"&gt;
+
+    div.executor .controls {
+      text-align:right;
+      float:right;
+    }
+    div.executor .controls a {
+      text-decoration: none;
+    }
+
+    div.executor pre em
+    {
+      font-style: normal;
+      color: #FF5600;
+    }
+
+    div.executor p#exception strong
+    {
+      color: #E4450B;
+    }
+
+    div.executor p#traceback
+    {
+      font-size: 8pt;
+    }
+
+    div.executor blockquote {
+      font-style: normal;
+      border: none;
+    }
+
+    div.executor table {
+      margin: 0;
+      padding: 0;
+    }
+
+    div.executor td {
+      margin: 0;
+      padding: 2px 2px 2px 5px;
+      font-size: 10pt;
+    }
+
+    div.executor div#_executor_output {
+      white-space: normal;
+      -khtml-nbsp-mode: space;
+      -khtml-line-break: after-white-space;
+    }
+
+    div#_executor_output .line.current {
+      background: rgba(255, 240, 80, 0.25);
+      outline: 1px solid rgba(255, 240, 80, 0.25);
+    }
+    div#_executor_output .out {
+
+    }
+    div#_executor_output .err {
+      color: red;
+    }
+    div#_executor_output .test {
+      font-weight: bold;
+    }
+    div#_executor_output .test.ok {
+      color: green;
+    }
+    div#_executor_output .test.fail {
+      color: red;
+    }
+    div#exception_report pre.snippet {
+      margin:4pt;
+      padding:4pt;
+    }
+    div#copytime {
+      font-size: 10pt;
+      float:left;
+      display:inline;
+    }
+  &lt;/style&gt;
+'''
+
+
+print(tm.html_header(title="Foo", subtitle="Bar", html_head=script_style_header))
+print('''
+&lt;div class="executor"&gt;&lt;!-- » python3 -u untitled.py --&gt;
+&lt;script type="text/javascript" charset="utf-8"&gt;
+  document.body.addEventListener("keydown", press, false);
+  document.body.addEventListener("click", click)
+&lt;/script&gt;
+
+&lt;!-- first box containing version info and script output --&gt;
+&lt;pre&gt;&lt;div id="_executor_output"&gt; &lt;!-- Script output --&gt;
+''')
+
+e.run(['python3', os.environ['TM_FILEPATH']])
+print('&lt;/pre&gt;')
+print('&lt;/div&gt;&lt;/div&gt;')
+print(tm.html_footer())</string>
+	<key>input</key>
+	<string>none</string>
+	<key>inputFormat</key>
+	<string>text</string>
+	<key>keyEquivalent</key>
+	<string>@r</string>
+	<key>name</key>
+	<string>Run Script</string>
+	<key>outputCaret</key>
+	<string>afterOutput</string>
+	<key>outputFormat</key>
+	<string>html</string>
+	<key>outputLocation</key>
+	<string>newWindow</string>
+	<key>scope</key>
+	<string>source.python</string>
+	<key>uuid</key>
+	<string>FE8FA9C3-54D7-4184-ACE8-3FBD3F8385F1</string>
+	<key>version</key>
+	<integer>2</integer>
+</dict>
+</plist>

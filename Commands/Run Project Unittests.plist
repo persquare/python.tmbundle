@@ -9,13 +9,22 @@
 	<key>capturePattern</key>
 	<string>^\s*File "(.+)", line (\d+)</string>
 	<key>command</key>
-	<string>#!/bin/bash
-[[ -f "${TM_SUPPORT_PATH}/lib/bash_init.sh" ]] &amp;&amp; . "${TM_SUPPORT_PATH}/lib/bash_init.sh"
+	<string>#!/usr/bin/env sh
 
-# Find all files that end with "Test.py" and run 
-# them.
+if [ "x${TM_PYTHON_VENV}" != "x" ]; then
+    source "${TM_PYTHON_VENV}/bin/activate"
+    PYTHON=python
+else
+    PYTHON=${TM_PYTHON-python3}
+fi
 
-find . -name "*Test.py" -exec "${TM_PYTHON:-python}" '{}' \;|pre</string>
+# echo "&lt;pre&gt;"
+cd "${TM_PROJECT_DIRECTORY}"
+${PYTHON} -m pytest -v --color=yes | ansi2html -s solarized
+# echo "&lt;/pre&gt;"
+
+exit 0
+</string>
 	<key>fileCaptureRegister</key>
 	<string>1</string>
 	<key>input</key>
@@ -27,7 +36,7 @@ find . -name "*Test.py" -exec "${TM_PYTHON:-python}" '{}' \;|pre</string>
 	<key>lineCaptureRegister</key>
 	<string>2</string>
 	<key>name</key>
-	<string>Run Project Unit Tests</string>
+	<string>Run Project Tests</string>
 	<key>outputCaret</key>
 	<string>afterOutput</string>
 	<key>outputFormat</key>
