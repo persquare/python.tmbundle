@@ -6,208 +6,51 @@
 	<string>saveActiveFile</string>
 	<key>command</key>
 	<string>#!/usr/bin/env python3
+
 import os
 import sys
-import signal
 import re
 import functools 
 from datetime import datetime
 
-envvars = ['TM_BUNDLE_SUPPORT', 'TM_SUPPORT_PATH']
-sys.path[:0] = [os.environ[v]+'/lib' for v in envvars if os.environ[v] not in sys.path]
+
+support_paths = ['TM_BUNDLE_SUPPORT', 'TM_SUPPORT_PATH']
+sys.path[:0] = [os.environ[v]+'/lib' for v in support_paths if os.environ[v] not in sys.path]
 
 
 import TextMate as tm
+import TextMate.html_templates as tmpl
 
-RE_LINKIFY = re.compile(r'(^\s*)(File "(.*)", line (\d*))(.*)$')
-RE_INDENT = re.compile(r'(^\s*)(.*)$')
-
-def make_div(cls, content):
-    return f'&lt;div class="{cls}"&gt;{content}&lt;/div&gt;'
-
-def make_span(cls, content):
-    return f'&lt;span class="{cls}"&gt;{content}&lt;/span&gt;'
-    
-def make_txmt_link(filepath, line, content):
-    return f'&lt;a href="txmt://open?url=file://{filepath}&amp;line={line}"&gt;{content}&lt;/a&gt;'
-    
-
-def make_header_ext(pid=''):
-    html = '''
-&lt;!-- executor javascripts --&gt;
-  &lt;script type="text/javascript" charset="utf-8"&gt;
-  function press(evt) {
-     if (evt.keyCode == 67 &amp;&amp; evt.ctrlKey == true) {
-       TextMate.system("kill -s USR1 %s;", null);
-       evt.preventDefault();
-     }
-  }
-
-  function click(evt) {
-    if (event.target.tagName == 'A') {
-      var line = event.target;
-      while (line &amp;&amp; !line.classList.contains('line')) line = line.parentElement;
-      if (line) {
-        Array.from(document.getElementsByClassName('line current')).forEach(function (el) {
-          el.classList.remove('current');
-        });
-        line.classList.add('current');
-      }
-    }
-  }
-  function copyOutput(element) {
-    output = element.innerText.replace(/(?:^| ) +/mg, function(match, offset, s) { return match.replace(/ /g, ' '); });
-    cmd = TextMate.system('/usr/bin/pbcopy', function(){{}});
-    cmd.write(output);
-    cmd.close();
-    document.getElementById('copytime').innerText = 'output copied to clipboard';
-  }
-
-  &lt;/script&gt;
-  &lt;!-- end javascript --&gt;
-  &lt;style type="text/css"&gt;
-
-    div.executor .controls {
-      text-align:right;
-      float:right;
-    }
-    div.executor .controls a {
-      text-decoration: none;
-    }
-
-    div.executor pre em
-    {
-      font-style: normal;
-      color: #FF5600;
-    }
-
-    div.executor p#exception strong
-    {
-      color: #E4450B;
-    }
-
-    div.executor p#traceback
-    {
-      font-size: 8pt;
-    }
-
-    div.executor blockquote {
-      font-style: normal;
-      border: none;
-    }
-
-    div.executor table {
-      margin: 0;
-      padding: 0;
-    }
-
-    div.executor td {
-      margin: 0;
-      padding: 2px 2px 2px 5px;
-      font-size: 10pt;
-    }
-
-    div.executor div#_executor_output {
-      white-space: normal;
-      -khtml-nbsp-mode: space;
-      -khtml-line-break: after-white-space;
-    }
-
-    div#_executor_output .line.current {
-      background: rgba(255, 240, 80, 0.25);
-      outline: 1px solid rgba(255, 240, 80, 0.25);
-    }
-    div#_executor_output .out {
-
-    }
-    div#_executor_output .err {
-      color: red;
-    }
-    div#_executor_output .test {
-      font-weight: bold;
-    }
-    div#_executor_output .test.ok {
-      color: green;
-    }
-    div#_executor_output .test.fail {
-      color: red;
-    }
-    div#exception_report pre.snippet {
-      margin:4pt;
-      padding:4pt;
-    }
-    div#copytime {
-      font-size: 10pt;
-      float:left;
-      display:inline;
-    }
-  &lt;/style&gt;
-  ''' % (pid)
-    return html
-
-def make_preamble():
-    return '''
-&lt;div class="executor"&gt;&lt;!-- » python3 -u untitled.py --&gt;
-&lt;script type="text/javascript" charset="utf-8"&gt;
-  document.body.addEventListener("keydown", press, false);
-  document.body.addEventListener("click", click)
-&lt;/script&gt;
-
-&lt;!-- first box containing version info and script output --&gt;
-&lt;pre&gt;&lt;div id="_executor_output"&gt; &lt;!-- Script output --&gt;
-'''
-
-def make_postamble(status, duration, options=None):
-    lines = ['&lt;/pre&gt;&lt;div class="controls"&gt;&lt;div id="copytime"&gt;&lt;/div&gt;&amp;nbsp;&amp;nbsp;&lt;a href="#" onclick="copyOutput(document.getElementById(\'_executor_output\'))"&gt;copy output&lt;/a&gt;']
-
-    options = options or {}
-    for key in options.get('controls', {}):
-        lines.append(" | &lt;a href=\"javascript:TextMate.system('#{options[:controls][key]}')\"&gt;#{key}&lt;/a&gt;")
-
-    lines.append('&lt;/div&gt;&lt;div id="exception_report" class="framed"&gt;')
-    if status == -signal.SIGUSR1:
-        msg = "Program interrupted by user"
-    elif status &lt; 0:
-        msg = f"Program terminated by uncaught signal {signal.Signals(-status).name} ({-status})"
-    else:
-        msg = f"Program exited with code #{status}"
-    
-    lines.append(f"{msg} after {duration:.2f} seconds")
-    lines.append('&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;')
-    return "\n".join(lines)
-    
+RE_ERROR_LOCATION = re.compile(r'(^\s*)(File "(.*)", line (\d*))(.*)$')
+   
 class PyExecutor(tm.Executor):
-    
-    def _preserve_leading_indent(self, line):
-        m = RE_INDENT.match(line)
-        indent, tail = m.groups()
-        line = f'{"&amp;nbsp;"*len(indent)}{tail}'
-        return line
-        
+      
     def format_stdout(self, line):
-        line = self._preserve_leading_indent(line)
-        return make_div('line', line.rstrip())
+        line = tmpl.preserve_leading_indent(line)
+        return tmpl.make_div('line', line.rstrip())
         
     def format_stderr(self, line):
-        m = RE_LINKIFY.match(line)
+        m = RE_ERROR_LOCATION.match(line)
         if m:
             indent, content, filepath, lineno, tail = m.groups()
-            line = f'{indent}{make_txmt_link(filepath, lineno, content)}{tail}'    
-        line = self._preserve_leading_indent(line)
-        return make_span('err', make_div('line', line.rstrip()))
+            line = f'{indent}{tmpl.make_txmt_link(filepath, lineno, content)}{tail}'    
+        line = tmpl.preserve_leading_indent(line)
+        return tmpl.make_span('err', tmpl.make_div('line', line.rstrip()))
 
 
+filepath = os.environ['TM_FILEPATH']
+title = os.path.basename(filepath)
+python = os.environ.get('TM_PYTHON', 'python3')
+subtitle = tm.sh([python, '-V'])
 
-def print_preamble(title, subtitle, pid):
-    print(tm.html_header(title="Foo", subtitle="Bar", html_head=make_header_ext(pid)))
-    print(make_preamble())
-
-pid_cb = functools.partial(print_preamble, "Foo", "Bar")
+print(tm.html_header(f'Running "{title}"…', subtitle, html_head=tmpl.executor_css()))
+print(tmpl.executor_preamble())
 e = PyExecutor()
 t0 = datetime.now()
-status = e.run(['python3', os.environ['TM_FILEPATH']], pid_cb)
+status = e.run([python, filepath], lambda pid : print(tmpl.make_pid(pid)))
 duration = datetime.now() - t0
-print(make_postamble(status, duration.total_seconds()))
+
+print(tmpl.executor_postamble(status, duration.total_seconds()))
 print(tm.html_footer())
 
 </string>

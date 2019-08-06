@@ -20,7 +20,7 @@ def sh(cmd):
     """ Execute `cmd` and capture stdout, and return it as a string. """
     result = ""
     # cmd = shlex.split(cmd)
-    result = subprocess.check_output(cmd, shell=True, encoding='utf-8')
+    result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=False, encoding='utf-8')
 
     # Old implementation
     # pipe = None

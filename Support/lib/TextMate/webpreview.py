@@ -1,13 +1,14 @@
+# encoding: utf-8
 # python bindings for soryu's web-preview
 import os
 import urllib.parse
 
-from .tm_helpers import sh_escape, defaults_read
+from .tm_helpers import defaults_read
 
 
 def html_header(title, subtitle, html_head=None):
     h = HTMLOutput()
-    return h.header(title=sh_escape(title), sub_title=sh_escape(subtitle), html_head=html_head)
+    return h.header(title=title, sub_title=subtitle, html_head=html_head)
 
 def html_footer():
     h = HTMLOutput()
@@ -103,52 +104,55 @@ class HTMLOutput(object):
         self.support_path = os.environ['TM_SUPPORT_PATH']
 
 
-        html = f"""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-  "http://www.w3.org/TR/html4/strict.dtd">
+        html = f"""
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
-<head>
-  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
-  <title>{self.window_title}</title>
-{self.screen_styles()}
-{self.print_styles()}
-  <script src="file://{e_url(self.support_path)}/script/default.js"    type="text/javascript" charset="utf-8"></script>
-  <script src="file://{e_url(self.support_path)}/script/webpreview.js" type="text/javascript" charset="utf-8"></script>
-  <script>var image_path = "file://{e_url(self.support_path)}/images/";</script>
-  <script src="file://{e_url(self.support_path)}/script/sortable.js"   type="text/javascript" charset="utf-8"></script>
-{self.html_head}
-  </head>
-<body id="tm_webpreview_body" class="{self.active_theme['class']}">
-  <div id="tm_webpreview_header">
-    <img id="gradient" src="file://{e_url(self.active_theme['path'])}/images/header.png" alt="header">
-    <p class="headline">{self.page_title}</p>
-    <p class="type">{self.sub_title}</p>
-    <img id="teaser" src="file://{e_url(self.active_theme['path'])}/images/teaser.png" alt="teaser">
-    <div id="theme_switcher">
-      <form action="#" onsubmit="return false;">
-        <div>
-          Theme:
-          <select onchange="selectTheme(event);" id="theme_selector">
-{self.style_options()}
-          </select>
+    <head>
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+        <title>{self.window_title}</title>
+        {self.screen_styles()}
+        {self.print_styles()}
+        <script src="file://{e_url(self.support_path)}/script/default.js" type="text/javascript" charset="utf-8"></script>
+        <script src="file://{e_url(self.support_path)}/script/webpreview.js" type="text/javascript" charset="utf-8"></script>
+        <script>var image_path = "file://{e_url(self.support_path)}/images/";</script>
+        <script src="file://{e_url(self.support_path)}/script/sortable.js"   type="text/javascript" charset="utf-8"></script>
+        <!-- Begin CSS and scripts -->
+        {self.html_head} 
+        <!-- End CSS and scripts -->      
+    </head>
+
+    <body id="tm_webpreview_body" class="{self.active_theme['class']}">
+        <div id="tm_webpreview_header">
+            <img id="gradient" src="file://{e_url(self.active_theme['path'])}/images/header.png" alt="header">
+            <p class="headline">{self.page_title}</p>
+            <p class="type">{self.sub_title}</p>
+            <img id="teaser" src="file://{e_url(self.active_theme['path'])}/images/teaser.png" alt="teaser">
+            <div id="theme_switcher">
+              <form action="#" onsubmit="return false;">
+                <div>
+                  Theme:
+                  <select onchange="selectTheme(event);" id="theme_selector">
+        {self.style_options()}
+                  </select>
+                </div>
+                <script type="text/javascript" charset="utf-8">
+                  document.getElementById('theme_selector').value = '{self.active_theme['class']}';
+                </script>
+              </form>
+            </div>
         </div>
-        <script type="text/javascript" charset="utf-8">
-          document.getElementById('theme_selector').value = '{self.active_theme['class']}';
-        </script>
-      </form>
-    </div>
-  </div>
-  <div id="tm_webpreview_content" class="{self.active_theme['class']}">
+    
+        <div id="tm_webpreview_content" class="{self.active_theme['class']}">
 
-            """
-
+"""
         return html
 
     def footer(self):
         html = """
-</div>
-</body>
+        </div> <!-- tm_webpreview_content -->
+    </body>
 </html>
-        """
+"""
         return html
 
 
