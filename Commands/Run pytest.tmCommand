@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>beforeRunningCommand</key>
+	<string>saveModifiedFiles</string>
+	<key>command</key>
+	<string>#!/usr/bin/env python3
+
+import os
+import sys
+import re
+import functools 
+from datetime import datetime
+import test.support
+
+
+support_paths = ['TM_BUNDLE_SUPPORT', 'TM_SUPPORT_PATH']
+sys.path[:0] = [os.environ[v]+'/lib' for v in support_paths if os.environ[v] not in sys.path]
+
+
+import TextMate as tm
+import TextMate.html_templates as tmpl
+
+RE_ERROR_LOCATION = re.compile(r'(^\s*)(File "(.*)", line (\d*))(.*)$')
+RE_TEST_RESULT = re.compile(r'(\bPASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)\b')
+RE_BEGIN_CAPTURE = re.compile(r'____')
+RE_END_CAPTURE = re.compile(r'====')
+
+   
+class PyExecutor(tm.Executor):
+    def __init__(self):
+        super(PyExecutor, self).__init__()
+        self.err_block = 0
+        
+    
+    def _colorize(self, line, key):
+        cls = {
+            'FAILED': 'test fail',
+            'PASSED': 'test ok',
+            'ERROR': 'test err', 
+            'XFAIL': 'test xfail',
+            'XPASS': 'test xpass',
+            'SKIPPED': 'test skipped'
+        }.get(key, 'out')
+        line = tmpl.preserve_leading_indent(line)
+        return tmpl.make_div(cls, line.rstrip())
+        
+    def _hide(self, line):
+        lines = []
+        if self.err_block:
+            lines.append('&lt;/div&gt;')
+        lines.append(tmpl.make_div('out', f'''&lt;a href="javascript:;" onclick="toggle_visibility('err_{self.err_block}')"&gt;{line.strip('_')}&lt;/a&gt;'''))
+        lines.append(f'''&lt;div id="err_{self.err_block}" class="hide"&gt;''')
+        self.err_block += 1
+        return "\n".join(lines)      
+    
+    def _finalize_hide(self, line):
+        closing = '&lt;/div&gt;' if self.err_block else ''
+        self.err_block = 0
+        return f"{closing}{tmpl.make_div('out', line)}" 
+      
+    def format_stdout(self, line):
+        m = RE_BEGIN_CAPTURE.search(line)
+        if m:
+            return self._hide(line)
+        m = RE_END_CAPTURE.search(line)
+        if m:
+            return self._finalize_hide(line)
+        m = RE_TEST_RESULT.search(line)
+        if m:
+            return self._colorize(line, m.group(1))
+        line = tmpl.preserve_leading_indent(line)
+        return tmpl.make_div('out', line.rstrip())
+        
+    def format_stderr(self, line):
+        return 'stderr...'
+        # m = RE_ERROR_LOCATION.match(line)
+        # if m:
+        #     indent, content, filepath, lineno, tail = m.groups()
+        #     line = f'{indent}{tmpl.make_txmt_link(filepath, lineno, content)}{tail}'
+        # line = tmpl.preserve_leading_indent(line)
+        # return tmpl.make_span('err', tmpl.make_div('line', line.rstrip()))
+
+
+
+
+# filepath = os.environ['TM_FILEPATH']
+# title = os.path.basename(filepath)
+python = os.environ.get('TM_PYTHON', 'python3')
+subtitle = tm.sh([python, '-V'])
+proj_dir = os.environ.get('TM_PROJECT_DIRECTORY', '')
+
+print(tm.html_header("Running pytest…", subtitle, html_head=tmpl.test_css()))
+print(tmpl.test_preamble())
+
+e = PyExecutor()
+with test.support.change_cwd(proj_dir) as cwd:
+    status = e.run([python, '-m', 'pytest', '-v', 'tests'], lambda pid : print(tmpl.make_pid(pid)))
+
+print(tmpl.test_postamble(status))
+print(tm.html_footer())
+</string>
+	<key>input</key>
+	<string>none</string>
+	<key>inputFormat</key>
+	<string>text</string>
+	<key>keyEquivalent</key>
+	<string>@t</string>
+	<key>name</key>
+	<string>Run pytest</string>
+	<key>outputCaret</key>
+	<string>afterOutput</string>
+	<key>outputFormat</key>
+	<string>html</string>
+	<key>outputLocation</key>
+	<string>newWindow</string>
+	<key>scope</key>
+	<string>source.python</string>
+	<key>uuid</key>
+	<string>5D289A26-1D11-4D5F-A688-7D9F4BCDBD93</string>
+	<key>version</key>
+	<integer>2</integer>
+</dict>
+</plist>
